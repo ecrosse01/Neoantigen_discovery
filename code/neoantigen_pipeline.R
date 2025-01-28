@@ -62,9 +62,10 @@ threshold_nFeature_RNA <- 250
 # ----------------------------------------------------------
 
 # Load the helper functions
-source("data_loading_helpers.R")
-source("cite_data_processing.R")
-source("plotting_functions.R")
+source("helper_functions/data_loading_helpers.R")
+source("helper_functions/cite_data_processing.R")
+source("helper_functions/plotting_functions.R")
+source("helper_functions/dextramer_peptide_scoring.R")
 
 # Set directories for each patient
 set_directories <- function(patient_id, base_dir) {
@@ -209,3 +210,49 @@ print(plot_SRSF2_10)
 
 ### Here we can see that for SRSF2_9 clonotype 16 and 17 are enriched in 
 ### Dex+ cells indicating that they recognize specific neoantigens.
+
+# ----------------------------------------------------------
+# 5. Dextramer neoantigen peptide analysis
+# ----------------------------------------------------------
+
+# Perform z-score analysis on the dex+ cells to identify 
+# predicted peptide clonotype pairs
+
+result_SRSF2_9 <- perform_z_score_analysis(fss_SRSF2_9_dex)
+result_SRSF2_10 <- perform_z_score_analysis(fss_SRSF2_10_dex)
+
+## Here we can see that for SRSF2_9 clonotype 16 is predicted to 
+## recognize the peptide "SRSF2-31" with a high z-score.
+
+# ==========================================================
+# 6. Dimension reduction and UMAP plotting
+# ==========================================================
+
+fss <- FindNeighbors(fss, reduction = "integrated.cca", dims = 1:30)
+fss <- FindClusters(fss, resolution = 0.5)
+
+# UMAP
+fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
+
+# Define palette
+pal1 <- c("#A2D47C", "#C1D375", "#317FE5", "#13741F", "#396185", "#7FB285",
+          "#FFD166", "#E09540", "#6C91C2", "#805D93", "#BFC2C6", "#FFA9AD",
+          "#FFD7D5", "#699684")
+
+DimPlot(fss, group.by="ident", cols = pal1, reduction = "umap", pt.size = 0.1, 
+        label.size = 8, label = TRUE)
+
+FeaturePlot(fss, features = c("CD4", "ITGAM", "PF4", "CD8A"))
+
+fss <- subset(fss, subset = seurat_clusters %in% c(4, 9, 12), invert = TRUE)
+
+fss <- FindNeighbors(fss, reduction = "integrated.cca", dims = 1:30)
+fss <- FindClusters(fss, resolution = 0.5)
+
+fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
+
+DimPlot(fss, group.by="ident", cols = pal1, reduction = "umap", pt.size = 0.1, 
+        label.size = 8, label = TRUE)
+
+
+DefaultAssay(fss) <- 'CITE'

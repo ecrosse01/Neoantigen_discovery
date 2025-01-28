@@ -43,3 +43,19 @@ plot_clonotype_proportions <- function(fss_sample) {
     scale_x_continuous(breaks = 1:50) # Display numbers 1-50 on the x-axis
 }
 
+# Function to plot a clonotype on the UMAP
+generate_clonotype_umap_plot <- function(seurat_obj, clonotype_column) {
+  # Initialize cell color and size
+  seurat_obj$cell_color <- "#F0F0F0"  # Default light grey for all cells
+  seurat_obj$cell_size <- 0.01        # Default small point size for all cells
+  
+  # Highlight cells belonging to the clonotype
+  clonotype_cells <- which(seurat_obj[[clonotype_column]] == 1)
+  seurat_obj$cell_color[clonotype_cells] <- "red"  # Red color for clonotype cells
+  seurat_obj$cell_size[clonotype_cells] <- 2       # Larger size for clonotype cells
+  
+  # Generate UMAP plot
+  DimPlot(seurat_obj, group.by = "cell_color", pt.size = seurat_obj$cell_size) +
+    scale_color_identity() +
+    ggtitle(paste0("UMAP Highlighting ", clonotype_column))
+}
