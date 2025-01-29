@@ -82,20 +82,17 @@ dirs_SRSF2_9 <- set_directories("data_for_edie_third_batch_january/WJK-2859_SRSF
 dirs_SRSF2_10 <- set_directories("dextramer_data_for_edie_january_part_2/WJK-2864_SRSF2_10", base_dir)
 
 # ==========================================================
-# 1. Load Expression, CITE, Dextramer, and TCR Data into Seurat Objects
+# 1. Load Expression and CITE-Seq Data
 # ==========================================================
 
-# Load and integrate data for SRSF2_9
+# Load data for SRSF2_9 (gene expression and CITE-seq)
 adata <- load_expression_data(dirs_SRSF2_9$dir_gex)
-adata <- load_dextramer_data(dirs_SRSF2_9$dir_dex, adata)
 adata <- load_cite_data(dirs_SRSF2_9$dir_CITE, adata)
-adata <- load_tcr_data(dirs_SRSF2_9$dir_TCR, adata)
 
-# Load and integrate data for SRSF2_10
+# Load data for SRSF2_10 (gene expression and CITE-seq)
 adata2 <- load_expression_data(dirs_SRSF2_10$dir_gex)
-adata2 <- load_dextramer_data(dirs_SRSF2_10$dir_dex, adata2)
 adata2 <- load_cite_data(dirs_SRSF2_10$dir_CITE, adata2)
-adata2 <- load_tcr_data(dirs_SRSF2_10$dir_TCR, adata2)
+
 
 # ==========================================================
 # 2. Seurat Object Pre-Processing 
@@ -109,18 +106,12 @@ fss <- merge(adata, y = adata2, add.cell.ids = c("SRSF2_9", "SRSF2_10"), project
 # ----------------------------------------------------------
 # Data Filtering, Normalization and Dataset Integration
 # ----------------------------------------------------------
-
-# Filter out low-quality cells
 fss$mitoRatio <- PercentageFeatureSet(object = fss, pattern = "^MT-") / 100
 fss <- subset(x = fss, 
               subset = (nCount_RNA >= threshold_nCount_RNA) & 
                        (nFeature_RNA >= threshold_nFeature_RNA) & 
                        (mitoRatio < threshold_mito))
-
-# Normalize the data
 fss <- NormalizeData(fss)
-
-# Find variable features
 fss <- FindVariableFeatures(fss, selection.method = "vst", nfeatures = 4000)
 
 VFs <- VariableFeatures(fss)
@@ -132,14 +123,10 @@ VFs_filtered <- VFs[!grepl("^TR", VFs)]
 VariableFeatures(fss) <- VFs_filtered
 
 all.genes <- rownames(fss)
-
-# Scale the data
 fss <- ScaleData(fss, features = all.genes)
 
-# Run PCA
 fss <- RunPCA(fss)
 
-# Run CCA integration
 fss <- IntegrateLayers(object = fss, method = CCAIntegration, 
                        orig.reduction = "pca", new.reduction = "integrated.cca",
                        verbose = FALSE)
@@ -157,7 +144,7 @@ fss <- NormalizeData(fss, assay = "CITE", normalization.method = "CLR")
 # Add sample information to the metadata
 fss$sample <- ifelse(grepl("SRSF2_9", colnames(fss)), "SRSF2_9", "SRSF2_10")
 
-# Subset the fss object into two samples to analyze separately
+# Subset the fss object into two samples
 fss_SRSF2_9 <- subset(fss, subset = sample == "SRSF2_9")
 fss_SRSF2_10 <- subset(fss, subset = sample == "SRSF2_10")
 
@@ -195,9 +182,37 @@ fss_SRSF2_10 <- apply_cite_threshold(
   hash_threshold = 1 # Determined by the above density plot
 )
 
-# Subset on the dex+ (i.e. Cite antibody negative) cells
+# Load dextramer and TCR data for SRSF2_9
 
-# For SRSF2_9
+fss_SRSF2_9 <- load_dextramer_data(
+  data_dir = dirs_SRSF2_9$dir_dex,
+  seurat_obj = fss_SRSF2_9,
+  sample_prefix = "SRSF2_9"
+)
+
+fss_SRSF2_9 <- load_tcr_data(
+  tcr_dir = dirs_SRSF2_9$dir_TCR,
+  seurat_obj = fss_SRSF2_9,
+  sample_prefix = "SRSF2_9"
+)
+
+# Load dextramer and TCR data for SRSF2_10
+# Load dextramer data for SRSF2_10
+fss_SRSF2_10 <- load_dextramer_data(
+  data_dir = dirs_SRSF2_10$dir_dex,
+  seurat_obj = fss_SRSF2_10,
+  sample_prefix = "SRSF2_10"
+)
+
+fss_SRSF2_10 <- load_tcr_data(
+  tcr_dir = dirs_SRSF2_10$dir_TCR,
+  seurat_obj = fss_SRSF2_10,
+  sample_prefix = "SRSF2_10"
+)
+
+# Subset on the dex+ cells (i.e. CITE_hash negative)
+
+#For SRSF2_9
 Idents(fss_SRSF2_9) <- "manual_hash_dmux"
 fss_SRSF2_9_dex <- subset(fss_SRSF2_9, idents = "Negative")
 
@@ -231,7 +246,7 @@ result_SRSF2_9 <- perform_z_score_analysis(fss_SRSF2_9_dex)
 result_SRSF2_10 <- perform_z_score_analysis(fss_SRSF2_10_dex)
 
 ## Here we can see that for SRSF2_9 clonotype 16 is predicted to 
-## recognize the peptide "SRSF2-31" (RHOT2-5) with a high z-score.
+## recognize the peptide "SRSF2-31" with a high z-score.
 
 # ==========================================================
 # 6. Dimension reduction and UMAP plotting
@@ -243,7 +258,7 @@ fss <- FindClusters(fss, resolution = 0.5)
 # UMAP
 fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
 
-# Define palettes
+# Define palette
 pal1 <- c("#A2D47C", "#C1D375", "#317FE5", "#13741F", "#396185", "#7FB285",
           "#FFD166", "#E09540", "#6C91C2", "#805D93", "#BFC2C6", "#FFA9AD",
           "#FFD7D5", "#699684")
@@ -251,7 +266,6 @@ pal1 <- c("#A2D47C", "#C1D375", "#317FE5", "#13741F", "#396185", "#7FB285",
 pal2 <- c("#699684", "#FFD166", "#7FB285", "#317FE5", "#6C91C2", "#805D93",
           "#E09540", "#396185", "#FFA9AD", "#396185")
 
-# UMAP plotting
 DimPlot(fss, group.by="ident", cols = pal1, reduction = "umap", pt.size = 0.1, 
         label.size = 8, label = TRUE)
 
@@ -268,8 +282,6 @@ fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
 DimPlot(fss, group.by="ident", cols = pal2, reduction = "umap", pt.size = 0.1, 
         label.size = 8, label = TRUE)
 
-
-DefaultAssay(fss) <- 'CITE'
 
 # ==========================================================
 # 6. Clonotype 16 plotting
