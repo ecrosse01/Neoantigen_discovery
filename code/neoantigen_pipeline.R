@@ -9,11 +9,11 @@
 # ----------------------------------------------------------
 # Title and Description
 # ----------------------------------------------------------
-# Analysis of pre/post-transplant MDS patient samples using:
+# Analysis of pre/post-transplant MDS patient samples integrating:
 # - RNA sequencing
 # - TCR repertoire
-# - Dextramer binding
-# - CITE-seq hashing
+# - Peptide dextramer (dex) libraries
+# - CITE-seq hashing (to distinguish dex+ and dex- cells)
 
 # ----------------------------------------------------------
 # Patient Information
@@ -27,12 +27,11 @@
 # ----------------------------------------------------------
 # Project Goals
 # ----------------------------------------------------------
+# - Identify TCR clonotypes binding peptide neoantigens (dex+ cells).
 # - Characterize immune changes pre- and post-transplant.
-# - Identify clonotypes linked to dextramer binding.
-# - Integrate multimodal data for comprehensive insights.
 
 # ==========================================================
-# 2. Setup Section
+# 2. Setup 
 # ==========================================================
 
 # ----------------------------------------------------------
@@ -51,7 +50,7 @@ library(cowplot)        # Plot composition
 # ----------------------------------------------------------
 # Global Variables
 # ----------------------------------------------------------
-# Define global thresholds and parameters used throughout analysis.
+
 threshold_umis <- 3
 threshold_mito <- 0.10
 threshold_nCount_RNA <- 500
@@ -62,10 +61,10 @@ threshold_nFeature_RNA <- 250
 # ----------------------------------------------------------
 
 # Load the helper functions
-source("helper_functions/data_loading_helpers.R")
-source("helper_functions/cite_data_processing.R")
-source("helper_functions/plotting_functions.R")
-source("helper_functions/dextramer_peptide_scoring.R")
+source("helper_functions/data_loading_helpers.R") # Different modality data loadings and integrations
+source("helper_functions/cite_data_processing.R")  # Define the Dex+ population using cite-seq manual thresholding
+source("helper_functions/plotting_functions.R") # Plotting functions
+source("helper_functions/dextramer_peptide_scoring.R") # Z-score analysis for peptide clonotype pairs
 
 # Set directories for each patient
 set_directories <- function(patient_id, base_dir) {
@@ -86,20 +85,20 @@ dirs_SRSF2_10 <- set_directories("dextramer_data_for_edie_january_part_2/WJK-286
 # 1. Load Expression, CITE, Dextramer, and TCR Data into Seurat Objects
 # ==========================================================
 
-# Load data for SRSF2_9
+# Load and integrate data for SRSF2_9
 adata <- load_expression_data(dirs_SRSF2_9$dir_gex)
 adata <- load_dextramer_data(dirs_SRSF2_9$dir_dex, adata)
 adata <- load_cite_data(dirs_SRSF2_9$dir_CITE, adata)
 adata <- load_tcr_data(dirs_SRSF2_9$dir_TCR, adata)
 
-# Load data for SRSF2_10
+# Load and integrate data for SRSF2_10
 adata2 <- load_expression_data(dirs_SRSF2_10$dir_gex)
 adata2 <- load_dextramer_data(dirs_SRSF2_10$dir_dex, adata2)
 adata2 <- load_cite_data(dirs_SRSF2_10$dir_CITE, adata2)
 adata2 <- load_tcr_data(dirs_SRSF2_10$dir_TCR, adata2)
 
 # ==========================================================
-# 2. Seurat Object Pre-Processing Section
+# 2. Seurat Object Pre-Processing 
 # ==========================================================
 
 # ----------------------------------------------------------
@@ -110,12 +109,18 @@ fss <- merge(adata, y = adata2, add.cell.ids = c("SRSF2_9", "SRSF2_10"), project
 # ----------------------------------------------------------
 # Data Filtering, Normalization and Dataset Integration
 # ----------------------------------------------------------
+
+# Filter out low-quality cells
 fss$mitoRatio <- PercentageFeatureSet(object = fss, pattern = "^MT-") / 100
 fss <- subset(x = fss, 
               subset = (nCount_RNA >= threshold_nCount_RNA) & 
                        (nFeature_RNA >= threshold_nFeature_RNA) & 
                        (mitoRatio < threshold_mito))
+
+# Normalize the data
 fss <- NormalizeData(fss)
+
+# Find variable features
 fss <- FindVariableFeatures(fss, selection.method = "vst", nfeatures = 4000)
 
 VFs <- VariableFeatures(fss)
@@ -127,10 +132,14 @@ VFs_filtered <- VFs[!grepl("^TR", VFs)]
 VariableFeatures(fss) <- VFs_filtered
 
 all.genes <- rownames(fss)
+
+# Scale the data
 fss <- ScaleData(fss, features = all.genes)
 
+# Run PCA
 fss <- RunPCA(fss)
 
+# Run CCA integration
 fss <- IntegrateLayers(object = fss, method = CCAIntegration, 
                        orig.reduction = "pca", new.reduction = "integrated.cca",
                        verbose = FALSE)
@@ -148,7 +157,7 @@ fss <- NormalizeData(fss, assay = "CITE", normalization.method = "CLR")
 # Add sample information to the metadata
 fss$sample <- ifelse(grepl("SRSF2_9", colnames(fss)), "SRSF2_9", "SRSF2_10")
 
-# Subset the fss object into two samples
+# Subset the fss object into two samples to analyze separately
 fss_SRSF2_9 <- subset(fss, subset = sample == "SRSF2_9")
 fss_SRSF2_10 <- subset(fss, subset = sample == "SRSF2_10")
 
@@ -186,9 +195,9 @@ fss_SRSF2_10 <- apply_cite_threshold(
   hash_threshold = 1 # Determined by the above density plot
 )
 
-# Subset on the dex+ cells
+# Subset on the dex+ (i.e. Cite antibody negative) cells
 
-#For SRSF2_9
+# For SRSF2_9
 Idents(fss_SRSF2_9) <- "manual_hash_dmux"
 fss_SRSF2_9_dex <- subset(fss_SRSF2_9, idents = "Negative")
 
@@ -222,7 +231,7 @@ result_SRSF2_9 <- perform_z_score_analysis(fss_SRSF2_9_dex)
 result_SRSF2_10 <- perform_z_score_analysis(fss_SRSF2_10_dex)
 
 ## Here we can see that for SRSF2_9 clonotype 16 is predicted to 
-## recognize the peptide "SRSF2-31" with a high z-score.
+## recognize the peptide "SRSF2-31" (RHOT2-5) with a high z-score.
 
 # ==========================================================
 # 6. Dimension reduction and UMAP plotting
@@ -234,14 +243,19 @@ fss <- FindClusters(fss, resolution = 0.5)
 # UMAP
 fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
 
-# Define palette
+# Define palettes
 pal1 <- c("#A2D47C", "#C1D375", "#317FE5", "#13741F", "#396185", "#7FB285",
           "#FFD166", "#E09540", "#6C91C2", "#805D93", "#BFC2C6", "#FFA9AD",
           "#FFD7D5", "#699684")
 
+pal2 <- c("#699684", "#FFD166", "#7FB285", "#317FE5", "#6C91C2", "#805D93",
+          "#E09540", "#396185", "#FFA9AD", "#396185")
+
+# UMAP plotting
 DimPlot(fss, group.by="ident", cols = pal1, reduction = "umap", pt.size = 0.1, 
         label.size = 8, label = TRUE)
 
+# Remove contaminating populations
 FeaturePlot(fss, features = c("CD4", "ITGAM", "PF4", "CD8A"))
 
 fss <- subset(fss, subset = seurat_clusters %in% c(4, 9, 12), invert = TRUE)
@@ -251,8 +265,36 @@ fss <- FindClusters(fss, resolution = 0.5)
 
 fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
 
-DimPlot(fss, group.by="ident", cols = pal1, reduction = "umap", pt.size = 0.1, 
+DimPlot(fss, group.by="ident", cols = pal2, reduction = "umap", pt.size = 0.1, 
         label.size = 8, label = TRUE)
 
 
 DefaultAssay(fss) <- 'CITE'
+
+# ==========================================================
+# 6. Clonotype 16 plotting
+# ==========================================================
+
+# Define TCR directories
+tcr_dir_9 <- dirs_SRSF2_9$dir_TCR
+tcr_dir_10 <- dirs_SRSF2_10$dir_TCR
+
+# Integrate TCR data into fss
+fss <- integrate_tcr_into_fss(fss, tcr_dir_9, tcr_dir_10, threshold_umis = 3)
+
+# Add sample ID prefix to clonotype IDs
+fss@meta.data$raw_clonotype_id <- ifelse(
+  grepl("^SRSF2_9", rownames(fss@meta.data)),
+  paste0("SRSF2_9_", fss@meta.data$raw_clonotype_id),
+  paste0("SRSF2_10_", fss@meta.data$raw_clonotype_id)
+)
+
+# Add binary indicator for clonotype 16
+fss[["clonotype16"]] <- ifelse(
+  fss@meta.data$raw_clonotype_id == "SRSF2_9_clonotype16",
+  1, 0
+)
+
+# Plot UMAP highlighting clonotype 16
+umap_plot <- generate_clonotype_umap_plot(fss, "clonotype16")
+print(umap_plot)
