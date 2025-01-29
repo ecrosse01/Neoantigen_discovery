@@ -70,3 +70,7 @@ mkdir data
 mv path_to_downloaded_data/* data/
 ```
 
+### 3. Start the Analysis
+
+
+
