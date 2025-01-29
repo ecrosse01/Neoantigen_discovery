@@ -135,7 +135,7 @@ fss <- IntegrateLayers(object = fss, method = CCAIntegration,
 fss[["RNA"]] <- JoinLayers(fss[["RNA"]])
 
 # ==========================================================
-# 3. CITE-seq Analysis - To Determine Cut-off for Dex+ Cells
+# 3. CITE-seq Analysis - To Define the Dex+ Populations
 # ==========================================================
 
 # Normalize CITE-seq data
