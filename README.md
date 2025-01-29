@@ -9,7 +9,7 @@ This repository contains a single-cell multimodal analysis pipeline for studying
 - **RNA sequencing** (Gene expression analysis)
 - **TCR repertoire** (Clonotype identification and tracking)
 - **Dextramer binding** (Neoantigen-specific immune response detection)
-- **CITE-seq hashing** (Surface protein profiling)
+- **CITE-seq hashing** (Discriminate between Dextramer + and Dextramer - (CITE hashed) cells)
 
 It enables the identification of clonotypes associated with dextramer binding and tracks immune changes during MDS progression and treatment.
 
