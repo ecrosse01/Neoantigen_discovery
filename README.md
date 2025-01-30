@@ -223,4 +223,154 @@ fss_SRSF2_10 <- apply_cite_threshold(
 
 ```
 
+### Predict which peptides are neoantigens and the TCRs that bind them
+
+First we will load and integrate the dextramer and TCR data for the two samples
+
+```r
+
+# Load dextramer and TCR data for SRSF2_9
+
+fss_SRSF2_9 <- load_dextramer_data(
+  data_dir = dirs_SRSF2_9$dir_dex,
+  seurat_obj = fss_SRSF2_9,
+  sample_prefix = "SRSF2_9"
+)
+
+fss_SRSF2_9 <- load_tcr_data(
+  tcr_dir = dirs_SRSF2_9$dir_TCR,
+  seurat_obj = fss_SRSF2_9,
+  sample_prefix = "SRSF2_9"
+)
+
+# Load dextramer and TCR data for SRSF2_10
+# Load dextramer data for SRSF2_10
+fss_SRSF2_10 <- load_dextramer_data(
+  data_dir = dirs_SRSF2_10$dir_dex,
+  seurat_obj = fss_SRSF2_10,
+  sample_prefix = "SRSF2_10"
+)
+
+fss_SRSF2_10 <- load_tcr_data(
+  tcr_dir = dirs_SRSF2_10$dir_TCR,
+  seurat_obj = fss_SRSF2_10,
+  sample_prefix = "SRSF2_10"
+)
+
+```
+
+Next create new seurat objects with just the dex+ cells using the previously defined CITE-Seq negative populations
+
+```r
+
+# Subset on the dex+ cells (i.e. CITE_hash negative)
+
+#For SRSF2_9
+Idents(fss_SRSF2_9) <- "manual_hash_dmux"
+fss_SRSF2_9_dex <- subset(fss_SRSF2_9, idents = "Negative")
+
+# For SRSF2_10
+Idents(fss_SRSF2_10) <- "manual_hash_dmux"
+fss_SRSF2_10_dex <- subset(fss_SRSF2_10, idents = "Negative")
+
+```
+
+Plot the TCR clonotype representations in the dextramer negative and positive populations to identify overrepresented clonotypes in the dextramer positive cells.
+
+```r
+
+# Apply the function to both samples
+plot_SRSF2_9 <- plot_clonotype_proportions(fss_SRSF2_9)
+plot_SRSF2_10 <- plot_clonotype_proportions(fss_SRSF2_10)
+
+# Check out the plots
+print(plot_SRSF2_9)
+print(plot_SRSF2_10)
+
+```
+
+You can see that clonotypes 16 and 17 are overrepresented in the Dex+ cells in sample SRSF2_9 predictive of binding peptides.
+
+The next functions before z-scoring analysis to predict TCR / neoantigen pairs in the Dex+ cells
+
+```r
+
+result_SRSF2_9 <- perform_z_score_analysis(fss_SRSF2_9_dex)
+result_SRSF2_10 <- perform_z_score_analysis(fss_SRSF2_10_dex)
+
+```
+
+Here we can see that for SRSF2_9 clonotype 16 is predicted to recognize the peptide "SRSF2-31" (RHOT5-1).
+
+### Visualize the integrated data with a UMAP and map on clonotype 16
+
+These steps are for dimension reduction, UMAP visualization and filtering of contaminating populations
+
+```r
+
+fss <- FindNeighbors(fss, reduction = "integrated.cca", dims = 1:30)
+fss <- FindClusters(fss, resolution = 0.5)
+
+# UMAP
+fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
+
+# Define palette
+pal1 <- c("#A2D47C", "#C1D375", "#317FE5", "#13741F", "#396185", "#7FB285",
+          "#FFD166", "#E09540", "#6C91C2", "#805D93", "#BFC2C6", "#FFA9AD",
+          "#FFD7D5", "#699684")
+
+pal2 <- c("#699684", "#FFD166", "#7FB285", "#317FE5", "#6C91C2", "#805D93",
+          "#E09540", "#396185", "#FFA9AD", "#396185")
+
+DimPlot(fss, group.by="ident", cols = pal1, reduction = "umap", pt.size = 0.1, 
+        label.size = 8, label = TRUE)
+
+# Remove contaminating populations
+FeaturePlot(fss, features = c("CD4", "ITGAM", "PF4", "CD8A"))
+
+fss <- subset(fss, subset = seurat_clusters %in% c(4, 9, 12), invert = TRUE)
+
+fss <- FindNeighbors(fss, reduction = "integrated.cca", dims = 1:30)
+fss <- FindClusters(fss, resolution = 0.5)
+
+fss <- RunUMAP(fss, dims = 1:30, reduction = "integrated.cca")
+
+DimPlot(fss, group.by="ident", cols = pal2, reduction = "umap", pt.size = 0.1, 
+        label.size = 8, label = TRUE)
+
+
+```
+
+Finally, we plot clonotype 16
+
+```r
+
+# Define TCR directories
+tcr_dir_9 <- dirs_SRSF2_9$dir_TCR
+tcr_dir_10 <- dirs_SRSF2_10$dir_TCR
+
+# Integrate TCR data into fss
+fss <- integrate_tcr_into_fss(fss, tcr_dir_9, tcr_dir_10, threshold_umis = 3)
+
+# Add sample ID prefix to clonotype IDs
+fss@meta.data$raw_clonotype_id <- ifelse(
+  grepl("^SRSF2_9", rownames(fss@meta.data)),
+  paste0("SRSF2_9_", fss@meta.data$raw_clonotype_id),
+  paste0("SRSF2_10_", fss@meta.data$raw_clonotype_id)
+)
+
+# Add binary indicator for clonotype 16
+fss[["clonotype16"]] <- ifelse(
+  fss@meta.data$raw_clonotype_id == "SRSF2_9_clonotype16",
+  1, 0
+)
+
+# Plot UMAP highlighting clonotype 16
+umap_plot <- generate_clonotype_umap_plot(fss, "clonotype16")
+print(umap_plot)
+
+```
+
+
+
 
