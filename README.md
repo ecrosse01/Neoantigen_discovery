@@ -28,11 +28,11 @@ It enables the identification of clonotypes associated with dextramer binding an
 
 ## Repository Contents
 
-**`code/neoantigen_pipeline.R`** – Main pipeline in full
-**`code/helper_functions/`** – Helper functions for the pipeline
-**`data/`** - Placeholder directory for NCBI downloaded data
-**`README.md`** – Documentation for setup and execution  
-**`LICENSE`** – Repository license  
+- **`code/neoantigen_pipeline.R`** – Main pipeline in full  
+- **`code/helper_functions/`** – Helper functions for the pipeline  
+- **`data/`** – Placeholder directory for NCBI downloaded data  
+- **`README.md`** – Documentation for setup and execution  
+- **`LICENSE`** – Repository license  
 
 ---
 
