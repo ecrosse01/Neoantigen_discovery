@@ -18,9 +18,11 @@ It enables the identification of clonotypes associated with dextramer binding an
 ## Relevant Publication
 
 **Reference Paper**:  
-[**"Title of Paper"**](https://doi.org/xxxxx)  
-**Authors**: 
-**Abstract**:  
+[**"Mis-splicing-derived neoantigens and cognate TCRs in splicing factor mutant leukemias"**](https://doi.org/10.1016/j.cell.2025.03.047)  
+
+**Authors**: WonJun Kim, Edie I. Crosse, Emma De Neef, Inaki Etxeberria, Erich Y. Sabio, Eric Wang, Jan Philipp Bewersdorf, Kuan-Ting Lin, Sydney X. Lu, Andrea Belleville, Nina Fox, Cynthia Castro, Pu Zhang, Takeshi Fujino, Jennifer Lewis, Jahan Rahman, Beatrice Zhang, Jacob H. Winick, Alexander M. Lewis, Robert F. Stanley, Susan DeWolf, Brigita Meskauskaite Urben, Meril Takizawa, Tobias Krause, Henrik Molina, Ronan Chaligne, Priya Koppikar, Jeffrey Molldrem, Mathieu Gigoux, Taha Merghoub, Anthony Daniyan, Smita S. Chandran, Benjamin D. Greenbaum, Christopher A. Klebanoff, Robert K. Bradley, and Omar Abdel-Wahab
+
+**Abstract**: Mutations in RNA splicing factors are prevalent across cancers and generate recurrently mis-spliced mRNA isoforms. Here, we identified a series of bona fide neoantigens translated from highly stereotyped splicing alterations promoted by neomorphic, leukemia-associated somatic splicing machinery mutations. We utilized feature-barcoded peptide-major histocompatibility complex (MHC) dextramers to isolate neoantigen-reactive T cell receptors (TCRs) from healthy donors, patients with active myeloid malignancy, and following curative allogeneic stem cell transplant. Neoantigen-reactive CD8+ T cells were present in the blood of patients with active cancer and had a distinct phenotype from virus-reactive T cells with evidence of impaired cytotoxic function. T cells engineered with TCRs recognizing SRSF2 mutant-induced neoantigens arising from mis-splicing events in CLK3 and RHOT2 resulted in specific recognition and cytotoxicity of SRSF2-mutant leukemia. These data identify recurrent RNA mis-splicing events as sources of actionable public neoantigens in myeloid leukemias and provide proof of concept for genetically redirecting T cells to recognize these targets. 
 
 ---
 
@@ -60,8 +62,22 @@ cd MDS-Multimodal-Analysis
 
 ### 2. Download the Data
 
-The raw sequencing data is available at **NCBI GEO**:  
-**[Download Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSEXXXXX)**
+The raw sequencing data is available at **NCBI GEO:GSE268157**:  
+**[Download Link](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE268157)**
+
+#### Download the following sample files:
+
+| Sample ID    | Description                             |
+|--------------|-----------------------------------------|
+| GSM8286626   | WJK-2859_SRSF2_9_RNA (SRSF2 Mutant)     |
+| GSM8286627   | WJK-2859_SRSF2_9_CITE (SRSF2 Mutant)    |
+| GSM8286628   | WJK-2859_SRSF2_9_TCR_VDJ (SRSF2 Mutant) |
+| GSM8286629   | WJK-2864_SRSF2_10_RNA (SRSF2 Mutant)    |
+| GSM8286630   | WJK-2864_SRSF2_10_CITE (SRSF2 Mutant)   |
+| GSM8286631   | WJK-2864_SRSF2_10_TCR_VDJ (SRSF2 Mutant)|
+
+SRSF2_9 = MDS patient 1, 15 months post-transplant
+SRSF2_10 = MDS patient 1, pre-transplant
 
 Once downloaded, place the data in the `data/` directory:
 
