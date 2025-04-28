@@ -56,8 +56,8 @@ Before running the pipeline, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YourUsername/MDS-Multimodal-Analysis.git
-cd MDS-Multimodal-Analysis
+git clone [https://github.com/YourUsername/MDS-Multimodal-Analysis.git](https://github.com/ecrosse01/Neoantigen_discovery.git)
+cd Neoantigen_discovery
 ```
 
 ### 2. Download the Data
